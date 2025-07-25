@@ -52,7 +52,7 @@ class GoogleShortenerScanner:
                 writer = csv.writer(f)
                 writer.writerow(['short_url', 'destination_url', 'status', 'timestamp'])
     
-    def _find_last_processed_url(self) -> Optional[str]:
+    def _find_last_processed_url(self, length: int) -> Optional[str]:
         """Find the last processed URL from the CSV file to resume from"""
         if not self.output_file.exists():
             return None
@@ -68,11 +68,16 @@ class GoogleShortenerScanner:
                         short_url = row[0]
                         # Extract the suffix from the URL
                         if '/goo.gl/' in short_url:
-                            last_url = short_url.split('/goo.gl/')[-1]
+                            suffix = short_url.split('/goo.gl/')[-1]
+                            # Only consider URLs of the same length we're scanning
+                            if len(suffix) == length:
+                                last_url = suffix
                 
                 if last_url:
-                    logger.info("Found last processed URL suffix: %s", last_url)
+                    logger.info("Found last processed URL suffix (length %d): %s", length, last_url)
                     return last_url
+                else:
+                    logger.info("No previous URLs found for length %d", length)
                 
         except Exception as e:
             logger.warning("Could not read existing CSV file: %s", e)
@@ -252,7 +257,7 @@ class GoogleShortenerScanner:
         
         # Auto-resume: find where we left off if start_from is not specified
         if start_from is None:
-            start_from = self._find_last_processed_url()
+            start_from = self._find_last_processed_url(length)
             if start_from:
                 logger.info("Auto-resuming from: %s", start_from)
                 # Move to the next URL after the last processed one
@@ -261,6 +266,7 @@ class GoogleShortenerScanner:
                     logger.info("Starting from next URL: %s", start_from)
                 else:
                     logger.info("Reached end of combinations, starting from beginning")
+                    start_from = None
         
         if self.skip_404:
             logger.info("Skipping 404 results (--no-404 flag enabled)")
@@ -271,15 +277,21 @@ class GoogleShortenerScanner:
             start_index = self._url_suffix_to_index(start_from, chars, length)
             logger.info("Starting from index: %s (URL: %s)", start_index, start_from)
         
+        found_start = start_from is None  # If no start_from, we start immediately
+        
         try:
             current_index = 0
             for combo in itertools.product(chars, repeat=length):
                 url_suffix = ''.join(combo)
                 
-                # Skip to start position using index comparison instead of string comparison
-                if start_index is not None and current_index < start_index:
-                    current_index += 1
-                    continue
+                # Skip to start position - use exact string matching for reliability
+                if not found_start:
+                    if url_suffix == start_from:
+                        found_start = True
+                        logger.info("Found starting position: %s at index %d", url_suffix, current_index)
+                    else:
+                        current_index += 1
+                        continue
                 
                 short_url = f"https://goo.gl/{url_suffix}"
                 
