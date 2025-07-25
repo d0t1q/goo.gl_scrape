@@ -248,6 +248,7 @@ class GoogleShortenerScanner:
         chars = string.ascii_letters + string.digits
         logger.info("Starting scan with %d-character combinations", length)
         logger.info("Total possible combinations: %s", f"{len(chars)**length:,}")
+        logger.info("Character order: %s", chars[:20] + "..." + chars[-10:])
         
         # Auto-resume: find where we left off if start_from is not specified
         if start_from is None:
@@ -264,12 +265,20 @@ class GoogleShortenerScanner:
         if self.skip_404:
             logger.info("Skipping 404 results (--no-404 flag enabled)")
         
+        # Convert start_from to index for more reliable comparison
+        start_index = None
+        if start_from:
+            start_index = self._url_suffix_to_index(start_from, chars, length)
+            logger.info("Starting from index: %s (URL: %s)", start_index, start_from)
+        
         try:
+            current_index = 0
             for combo in itertools.product(chars, repeat=length):
                 url_suffix = ''.join(combo)
                 
-                # Skip to start position if specified
-                if start_from and url_suffix < start_from:
+                # Skip to start position using index comparison instead of string comparison
+                if start_index is not None and current_index < start_index:
+                    current_index += 1
                     continue
                 
                 short_url = f"https://goo.gl/{url_suffix}"
@@ -288,8 +297,10 @@ class GoogleShortenerScanner:
                 
                 # Progress logging (show all processed, even 404s)
                 if self.processed_count % 100 == 0:
-                    logger.info("Processed: %s | Found: %s | Current: %s", 
-                               f"{self.processed_count:,}", f"{self.found_count:,}", url_suffix)
+                    logger.info("Processed: %s | Found: %s | Current: %s (index: %s)", 
+                               f"{self.processed_count:,}", f"{self.found_count:,}", url_suffix, current_index)
+                
+                current_index += 1
                 
                 # Rate limiting
                 time.sleep(self.delay)
@@ -297,7 +308,7 @@ class GoogleShortenerScanner:
         except KeyboardInterrupt:
             logger.info("Scan interrupted. Processed: %s | Found: %s", 
                        f"{self.processed_count:,}", f"{self.found_count:,}")
-            logger.info("Resume with --start-from %s", url_suffix)
+            logger.info("Resume with --start-from %s (index: %s)", url_suffix, current_index)
     
     def _get_next_url_suffix(self, current_suffix: str, chars: str, length: int) -> Optional[str]:
         """Get the next URL suffix in sequence"""
@@ -332,6 +343,25 @@ class GoogleShortenerScanner:
             return None
         
         return ''.join(suffix_list)
+    
+    def _url_suffix_to_index(self, suffix: str, chars: str, length: int) -> int:
+        """Convert URL suffix to its index in the iteration sequence"""
+        if len(suffix) != length:
+            return 0
+        
+        index = 0
+        base = len(chars)
+        
+        for i, char in enumerate(suffix):
+            try:
+                char_index = chars.index(char)
+                # Calculate position using base conversion
+                index += char_index * (base ** (length - 1 - i))
+            except ValueError:
+                # Character not found, return 0
+                return 0
+        
+        return index
 
 def main():
     parser = argparse.ArgumentParser(description='Modern goo.gl URL Scanner')
