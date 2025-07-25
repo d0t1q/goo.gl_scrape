@@ -115,15 +115,6 @@ The scanner automatically resumes from where it left off:
 2. **Subsequent runs**: Reads CSV file and continues from last processed URL
 3. **Manual override**: Use `--start-from` to specify exact starting position
 
-### Performance Considerations
-
-| URL Length | Combinations | Estimated Time* |
-|------------|--------------|-----------------|
-| 4 chars | 14,776,336 | ~4-6 hours |
-| 5 chars | 916,132,832 | ~10-15 days |
-| 6 chars | 56,800,235,584 | ~3-5 years |
-
-*Assuming 1 second delay and 10% hit rate
 
 ## 📁 Project Structure
 
@@ -132,8 +123,6 @@ goo.gl-scanner/
 ├── goo.gl.py                    # Main scanner script
 ├── requirements.txt             # Python dependencies  
 ├── README.md                    # This documentation
-├── .github/
-│   └── copilot-instructions.md  # AI coding assistant config
 ├── goo.gl_urls.csv             # Output file (created during scanning)
 └── goo_gl_scanner.log          # Log file (created during scanning)
 ```
@@ -163,31 +152,11 @@ It automatically extracts the real destination URL without user interaction.
 - **Recommendation**: Keep >= 0.5 seconds to avoid rate limiting
 
 ## 🚨 Important Notes
-
-- **Legal**: Only scan URLs you have permission to access
-- **Respectful**: Use reasonable delays to avoid overwhelming servers
-- **Backup**: Keep backups of your CSV files
 - **Time Sensitive**: Run before August 25th, 2025!
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📜 License
 
 This project is provided as-is for educational and archival purposes. Please use responsibly and in accordance with Google's Terms of Service.
-
-## 🙏 Acknowledgments
-
-- Originally based on a legacy Python script for goo.gl URL scanning
-- Modernized for Python 3.8+ with enhanced error handling
-- Designed to preserve URL mappings before the service shutdown
-
----
 
 **⚡ Quick Start Reminder:**
 ```bash
